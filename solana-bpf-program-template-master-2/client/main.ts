@@ -79,7 +79,7 @@ async function getOrCreateLoggerStateAccount(payer: Keypair): Promise<Keypair> {
     const secretKey = Uint8Array.from(JSON.parse(fs.readFileSync(LOGGER_STATE_FILE, 'utf-8')));
     return Keypair.fromSecretKey(secretKey);
   }
-  console.log('🚀 Creating new logger state...');
+  console.log('Creating new logger state...');
   const kp = Keypair.generate();
   const space = 8;
   const lamports = await connection.getMinimumBalanceForRentExemption(space);
