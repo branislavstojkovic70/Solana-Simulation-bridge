@@ -75,7 +75,7 @@ async function getLoggerSequence(statePubkey: PublicKey): Promise<number> {
 
 async function getOrCreateLoggerStateAccount(payer: Keypair): Promise<Keypair> {
   if (fs.existsSync(LOGGER_STATE_FILE)) {
-    console.log('✅ Logger state found. Loading...');
+    console.log('Logger state found. Loading...');
     const secretKey = Uint8Array.from(JSON.parse(fs.readFileSync(LOGGER_STATE_FILE, 'utf-8')));
     return Keypair.fromSecretKey(secretKey);
   }
@@ -103,7 +103,6 @@ async function getMessagePda(loggerProg: PublicKey, sequence: number): Promise<[
 }
 
 async function main() {
-  console.log('--- Start Escrow + Logger test ---');
 
   const user1 = getOrCreateKeypair(USER1_FILE, 'User1');
   const user2 = getOrCreateKeypair(USER2_FILE, 'User2');
@@ -125,7 +124,6 @@ async function main() {
   const balance2 = await getAccount(connection, user2TokenAcc.address);
   console.log('User1 balance after withdraw:', Number(balance1.amount));
   console.log('User2 balance after withdraw:', Number(balance2.amount));
-  // Koristimo isti escrow PDA (s prefiksom 'escrow') kao escrowDataPda i kasnije kao vault authority.
   const [escrowDataPda] = await PublicKey.findProgramAddress(
     [Buffer.from('escrow'), mint.toBuffer()],
     ESCROW_PROGRAM_ID
@@ -138,7 +136,7 @@ async function main() {
   // ------------------ DEPOSIT ------------------
   const depositAmount = 50;
   const depositData = Buffer.alloc(1 + 8);
-  depositData.writeUInt8(0, 0); // 0 = Deposit
+  depositData.writeUInt8(0, 0); 
   depositData.writeBigUInt64LE(BigInt(depositAmount), 1);
 
   const seqBefore = await getLoggerSequence(loggerStateKP.publicKey);
@@ -180,24 +178,23 @@ async function main() {
   withdrawData.writeUInt8(1, 0); // 1 = Withdraw
   withdrawData.writeBigUInt64LE(BigInt(withdrawAmount), 1);
 
-  // 🔁 Uzmi trenutni SEQUENCE iz logger state-a
   const withdrawSeq = await getLoggerSequence(loggerStateKP.publicKey);
   const [withdrawMessagePda] = await getMessagePda(LOGGER_PROGRAM_ID, withdrawSeq + 1);
 
   const withdrawIx = new TransactionInstruction({
     programId: ESCROW_PROGRAM_ID,
     keys: [
-      { pubkey: user1.publicKey, isSigner: true, isWritable: true },           // 0 user_signer
-      { pubkey: user2TokenAcc.address, isSigner: false, isWritable: true },    // 1 user_token_acc
-      { pubkey: escrowDataPda, isSigner: false, isWritable: true },            // 2 escrow_data_pda
-      { pubkey: vaultPda, isSigner: false, isWritable: true },                 // 3 vault_acc_pda
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },        // 4 token_program
-      { pubkey: LOGGER_PROGRAM_ID, isSigner: false, isWritable: false },       // 5 logger_program
-      { pubkey: loggerStateKP.publicKey, isSigner: false, isWritable: true },  // 6 logger_state_account
-      { pubkey: vaultPda, isSigner: false, isWritable: false },                // 7 vault_authority (same PDA)
-      { pubkey: withdrawMessagePda, isSigner: false, isWritable: true },       // 8 message_pda
-      { pubkey: user1.publicKey, isSigner: true, isWritable: true },           // 9 payer (user1)
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // 10 system_program
+      { pubkey: user1.publicKey, isSigner: true, isWritable: true },           
+      { pubkey: user2TokenAcc.address, isSigner: false, isWritable: true },   
+      { pubkey: escrowDataPda, isSigner: false, isWritable: true },            
+      { pubkey: vaultPda, isSigner: false, isWritable: true },                 
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },        
+      { pubkey: LOGGER_PROGRAM_ID, isSigner: false, isWritable: false },       
+      { pubkey: loggerStateKP.publicKey, isSigner: false, isWritable: true }, 
+      { pubkey: vaultPda, isSigner: false, isWritable: false },                
+      { pubkey: withdrawMessagePda, isSigner: false, isWritable: true },       
+      { pubkey: user1.publicKey, isSigner: true, isWritable: true },           
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: withdrawData,
   });
